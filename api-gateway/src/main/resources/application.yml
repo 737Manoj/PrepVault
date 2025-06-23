@@ -1,0 +1,83 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      routes:
+        - id: resource-microservice
+          uri: ${RESOURCE-MICROSERVICE:http://localhost:8081}
+          predicates:
+            - Path=/api/resources/**
+          filters:
+            - AuthFilter
+        - id: resource-search
+          uri: ${RESOURCE-MICROSERVICE:http://localhost:8081}
+          predicates:
+            - Path=/api/resources/search
+        - id: resource-health
+          uri: ${RESOURCE-MICROSERVICE:http://localhost:8081}
+          predicates:
+            - Path=/api/health
+        - id: ai-service
+          uri: ${AI-MICROSERVICE:http://localhost:8082}
+          predicates:
+            - Path=/api/ai/**,/api/generate-quiz,/api/quizzes,/api/quizzes/**,/api/generate-flashcards,/api/flashcards/**
+          filters:
+            - RewritePath=/api(?<segment>.*), /api${segment}
+            - AuthFilter
+        - id: user-service
+          uri: ${USER-MICROSERVICE:http://localhost:8083}
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - AuthFilter
+        - id: auth-service
+          uri: ${USER-MICROSERVICE:http://localhost:8083}
+          predicates:
+            - Path=/api/auth/**
+
+jwt:
+  secret: dGhpc2lzYXNlY3JldGtleWZvcmpldHRlc3RpbmdhcHVycG9zZQ== # Change in production
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web.reactive: DEBUG
+    reactor.netty: DEBUG
+    org.springframework.boot.actuator: DEBUG
+    org.springframework.cloud.gateway.route: TRACE
+    com.resourceSharingPlatform.api_gateway.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,gateway
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
